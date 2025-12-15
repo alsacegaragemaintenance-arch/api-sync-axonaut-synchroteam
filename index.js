@@ -1,4 +1,3 @@
-// index.js
 require('dotenv').config();
 const express = require('express');
 const axios = require('axios');
@@ -8,9 +7,9 @@ app.use(express.json());
 
 // 🔹 Variables d'environnement
 const PORT = process.env.PORT || 3000;
-const WEBHOOK_TOKEN = process.env.WEBHOOK_TOKEN; // token pour sécuriser le webhook Axonaut
+const WEBHOOK_TOKEN = process.env.WEBHOOK_TOKEN;
 const SYNCHROTEAM_API_KEY = process.env.ST_API_KEY;
-const SYNCHROTEAM_URL = process.env.SYNCHROTEAM_URL; // ex: https://ws.synchroteam.com/v3
+const SYNCHROTEAM_URL = process.env.SYNCHROTEAM_URL; // ex: https://api.synchroteam.com/v2
 
 // 🔹 Endpoint racine (test navigateur)
 app.get('/', (req, res) => {
@@ -37,11 +36,11 @@ app.post('/axonaut/client', async (req, res) => {
         // 🔹 Préparer les données à envoyer à Synchroteam
         const synchroData = {
             name: clientData.name,
-            phone: clientData.number,
+            phone: clientData.number, // Synchroteam attend 'phone'
             email: clientData.email
         };
 
-        // 🔹 Vérifier si le client existe déjà
+        // 🔹 Vérifier si le client existe déjà via email
         const searchUrl = `${SYNCHROTEAM_URL}/clients?email=${encodeURIComponent(synchroData.email)}`;
         const searchResponse = await axios.get(searchUrl, {
             headers: {
@@ -78,7 +77,6 @@ app.post('/axonaut/client', async (req, res) => {
 
     } catch (error) {
         console.error("❌ Erreur webhook Axonaut :", error.message);
-
         if (error.response) {
             console.error("Status:", error.response.status);
             console.error("Data:", error.response.data);
