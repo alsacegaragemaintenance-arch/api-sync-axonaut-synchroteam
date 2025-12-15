@@ -8,9 +8,9 @@ app.use(express.json());
 
 // 🔹 Variables d'environnement
 const PORT = process.env.PORT || 3000;
-const WEBHOOK_TOKEN = process.env.WEBHOOK_TOKEN;
+const WEBHOOK_TOKEN = process.env.AXO_WEBHOOK_TOKEN; // Vérifie le nom exact dans ton .env
 const SYNCHROTEAM_API_KEY = process.env.ST_API_KEY;
-const SYNCHROTEAM_URL = process.env.SYNCHROTEAM_URL; // ex: https://ws.synchroteam.com/v3
+const SYNCHROTEAM_URL = process.env.ST_ENDPOINT; // ex: https://ws.synchroteam.com/v3
 
 // 🔹 Endpoint racine (test navigateur)
 app.get('/', (req, res) => {
