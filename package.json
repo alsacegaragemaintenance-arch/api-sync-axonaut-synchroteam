@@ -1,14 +1,14 @@
 {
   "name": "api-sync-axonaut-synchroteam",
   "version": "1.0.0",
-  "description": "",
+  "description": "API pour synchronisation Axonaut ↔ Synchroteam",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": ["axonaut", "synchroteam", "api", "nodejs"],
+  "author": "Alsace Garage Maintenance",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
