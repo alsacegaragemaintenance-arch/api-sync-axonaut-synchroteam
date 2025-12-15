@@ -8,9 +8,13 @@ app.use(express.json());
 
 // 🔹 Variables d'environnement
 const PORT = process.env.PORT || 3000;
-const WEBHOOK_TOKEN = process.env.AXO_WEBHOOK_TOKEN; // Vérifie le nom exact dans ton .env
+const WEBHOOK_TOKEN = process.env.AXO_WEBHOOK_TOKEN;
 const SYNCHROTEAM_API_KEY = process.env.ST_API_KEY;
-const SYNCHROTEAM_URL = process.env.ST_ENDPOINT; // ex: https://ws.synchroteam.com/v3
+const SYNCHROTEAM_DOMAIN = process.env.ST_DOMAIN; // ex: agm.synchroteam.com
+const SYNCHROTEAM_URL = `https://ws.synchroteam.com/Api/v2`; // base API v2
+
+// 🔹 Encode Basic Auth pour Synchroteam
+const authHeader = 'Basic ' + Buffer.from(`${SYNCHROTEAM_DOMAIN}:${SYNCHROTEAM_API_KEY}`).toString('base64');
 
 // 🔹 Endpoint racine (test navigateur)
 app.get('/', (req, res) => {
@@ -36,56 +40,61 @@ app.post('/axonaut/client', async (req, res) => {
 
         // 🔹 Préparer les données à envoyer à Synchroteam
         const synchroData = {
-            name: clientData.name,
-            phone: clientData.number, // Vérifie si Synchroteam attend 'phone' ou 'mobile'
-            email: clientData.email
+            ContactName: clientData.name,
+            ContactPhone: clientData.number,
+            ContactEmail: clientData.email
         };
 
-        // 🔹 Vérifier si le client existe déjà
-        const searchUrl = `${SYNCHROTEAM_URL}/clients?email=${encodeURIComponent(synchroData.email)}`;
+        // 🔹 Vérifier si le client existe déjà par email
+        const searchUrl = `${SYNCHROTEAM_URL}/Customer/List?contactEmail=${encodeURIComponent(clientData.email)}`;
         const searchResponse = await axios.get(searchUrl, {
             headers: {
-                'X-API-KEY': SYNCHROTEAM_API_KEY,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
+                'Authorization': authHeader,
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
             }
         });
 
         if (searchResponse.data && searchResponse.data.length > 0) {
             // Client existe → mise à jour
-            const clientId = searchResponse.data[0].id;
-            await axios.put(`${SYNCHROTEAM_URL}/clients/${clientId}`, synchroData, {
+            const clientId = searchResponse.data[0].CustomerId;
+            const updateUrl = `${SYNCHROTEAM_URL}/Customer/Send`;
+            await axios.post(updateUrl, {
+                CustomerId: clientId,
+                ...synchroData
+            }, {
                 headers: {
-                    'X-API-KEY': SYNCHROTEAM_API_KEY,
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
+                    'Authorization': authHeader,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
                 }
             });
             console.log(`✏️ Client existant mis à jour dans Synchroteam : ${clientId}`);
         } else {
             // Client n'existe pas → création
-            const createResponse = await axios.post(`${SYNCHROTEAM_URL}/clients`, synchroData, {
+            const createUrl = `${SYNCHROTEAM_URL}/Customer/Send`;
+            const createResponse = await axios.post(createUrl, synchroData, {
                 headers: {
-                    'X-API-KEY': SYNCHROTEAM_API_KEY,
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
+                    'Authorization': authHeader,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
                 }
             });
-            console.log(`✅ Nouveau client créé dans Synchroteam : ${createResponse.data.id}`);
+            console.log(`✅ Nouveau client créé dans Synchroteam : ${createResponse.data.CustomerId || 'ID non retourné'}`);
         }
 
         res.status(200).json({ message: "Webhook Axonaut traité avec succès" });
+
     } catch (error) {
         console.error("❌ Erreur webhook Axonaut :", error.message);
-
         if (error.response) {
             console.error("Status:", error.response.status);
             console.error("Data:", error.response.data);
         }
 
-        res.status(500).json({ 
-            error: "Erreur serveur", 
-            details: error.response?.data || error.message 
+        res.status(500).json({
+            error: "Erreur serveur",
+            details: error.response?.data || error.message
         });
     }
 });
