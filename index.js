@@ -76,8 +76,17 @@ app.post('/axonaut/client', async (req, res) => {
 
         res.status(200).json({ message: "Webhook Axonaut traité avec succès" });
     } catch (error) {
-        console.error("❌ Erreur webhook Axonaut :", error.response?.data || error.message);
-        res.status(500).json({ error: "Erreur serveur" });
+        console.error("❌ Erreur webhook Axonaut :", error.message);
+
+        if (error.response) {
+            console.error("Status:", error.response.status);
+            console.error("Data:", error.response.data);
+        }
+
+        res.status(500).json({ 
+            error: "Erreur serveur", 
+            details: error.response?.data || error.message 
+        });
     }
 });
 
