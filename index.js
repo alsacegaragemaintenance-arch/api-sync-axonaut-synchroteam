@@ -1,3 +1,4 @@
+// index.js
 require('dotenv').config();
 const express = require('express');
 const axios = require('axios');
@@ -11,6 +12,16 @@ const WEBHOOK_TOKEN = process.env.WEBHOOK_TOKEN;
 const SYNCHROTEAM_API_KEY = process.env.SYNCHROTEAM_API_KEY;
 const SYNCHROTEAM_URL = process.env.SYNCHROTEAM_URL;
 
+// 🔹 Endpoint racine (test navigateur)
+app.get('/', (req, res) => {
+    res.send("API Full Sync Axonaut <-> Synchroteam active");
+});
+
+// 🔹 Endpoint santé
+app.get('/health', (req, res) => {
+    res.json({ status: "ok", timestamp: new Date() });
+});
+
 // 🔹 Webhook Axonaut (création / modification client)
 app.post('/axonaut/client', async (req, res) => {
     try {
@@ -23,7 +34,7 @@ app.post('/axonaut/client', async (req, res) => {
         // 🔹 Préparer les données à envoyer à Synchroteam
         const synchroData = {
             name: clientData.name,
-            phone: clientData.number,
+            phone: clientData.number, // vérifie le champ exact attendu par Synchroteam
             email: clientData.email
         };
 
@@ -34,12 +45,14 @@ app.post('/axonaut/client', async (req, res) => {
         });
 
         if (searchResponse.data && searchResponse.data.length > 0) {
+            // Client existe → mise à jour
             const clientId = searchResponse.data[0].id;
             await axios.put(`${SYNCHROTEAM_URL}/clients/${clientId}`, synchroData, {
                 headers: { 'X-API-KEY': SYNCHROTEAM_API_KEY }
             });
             console.log(`✏️ Client existant mis à jour dans Synchroteam : ${clientId}`);
         } else {
+            // Client n'existe pas → création
             const createResponse = await axios.post(`${SYNCHROTEAM_URL}/clients`, synchroData, {
                 headers: { 'X-API-KEY': SYNCHROTEAM_API_KEY }
             });
@@ -51,11 +64,6 @@ app.post('/axonaut/client', async (req, res) => {
         console.error("❌ Erreur webhook Axonaut :", error.response?.data || error.message);
         res.status(500).json({ error: "Erreur serveur" });
     }
-});
-
-// 🔹 Endpoint santé pour vérifier que l'API est en ligne
-app.get('/health', (req, res) => {
-    res.json({ status: "ok", timestamp: new Date() });
 });
 
 // 🔹 Démarrage du serveur
