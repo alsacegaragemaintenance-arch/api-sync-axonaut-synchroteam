@@ -1,4 +1,3 @@
-// index.js
 require('dotenv').config();
 const express = require('express');
 const axios = require('axios');
@@ -8,9 +7,16 @@ app.use(express.json());
 
 // 🔹 Variables d'environnement
 const PORT = process.env.PORT || 3000;
-const WEBHOOK_TOKEN = process.env.WEBHOOK_TOKEN; // Token webhook Axonaut
-const SYNCHROTEAM_API_KEY = process.env.ST_API_KEY;
-const SYNCHROTEAM_URL = process.env.SYNCHROTEAM_URL; // ex: https://api.synchroteam.com/v2
+const WEBHOOK_TOKEN = process.env.WEBHOOK_TOKEN;
+const ST_DOMAIN = process.env.ST_DOMAIN;
+const ST_API_KEY = process.env.ST_API_KEY;
+const SYNCHROTEAM_BASE = process.env.SYNCHROTEAM_BASE; // ex: https://ws.synchroteam.com/api/v3
+
+// 🔹 Générer l’auth Basic pour Synchroteam
+const getAuthHeader = () => {
+    const token = Buffer.from(`${ST_DOMAIN}:${ST_API_KEY}`).toString('base64');
+    return `Basic ${token}`;
+};
 
 // 🔹 Endpoint racine (test navigateur)
 app.get('/', (req, res) => {
@@ -41,36 +47,48 @@ app.post('/axonaut/client', async (req, res) => {
             email: clientData.email
         };
 
-        // 🔹 Vérifier si le client existe déjà
-        const searchUrl = `${SYNCHROTEAM_URL}/client?email=${encodeURIComponent(synchroData.email)}&api_key=${SYNCHROTEAM_API_KEY}`;
-        const searchResponse = await axios.get(searchUrl);
+        // 🔹 Vérifier si le client existe déjà (endpoint GET /customer/send)
+        const searchUrl = `${SYNCHROTEAM_BASE}/customer/send?email=${encodeURIComponent(synchroData.email)}`;
+        const searchResponse = await axios.get(searchUrl, {
+            headers: {
+                'Authorization': getAuthHeader(),
+                'Accept': 'application/json'
+            }
+        });
 
         if (searchResponse.data && searchResponse.data.length > 0) {
             // Client existe → mise à jour
             const clientId = searchResponse.data[0].id;
-            await axios.post(`${SYNCHROTEAM_URL}/client?api_key=${SYNCHROTEAM_API_KEY}`, {
-                id: clientId,
-                ...synchroData
+            await axios.put(`${SYNCHROTEAM_BASE}/customer/${clientId}`, synchroData, {
+                headers: {
+                    'Authorization': getAuthHeader(),
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
             });
             console.log(`✏️ Client existant mis à jour dans Synchroteam : ${clientId}`);
         } else {
             // Client n'existe pas → création
-            const createResponse = await axios.post(`${SYNCHROTEAM_URL}/client?api_key=${SYNCHROTEAM_API_KEY}`, synchroData);
+            const createResponse = await axios.post(`${SYNCHROTEAM_BASE}/customer`, synchroData, {
+                headers: {
+                    'Authorization': getAuthHeader(),
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            });
             console.log(`✅ Nouveau client créé dans Synchroteam : ${createResponse.data.id}`);
         }
 
         res.status(200).json({ message: "Webhook Axonaut traité avec succès" });
-
     } catch (error) {
         console.error("❌ Erreur webhook Axonaut :", error.message);
         if (error.response) {
             console.error("Status:", error.response.status);
             console.error("Data:", error.response.data);
         }
-
-        res.status(500).json({ 
-            error: "Erreur serveur", 
-            details: error.response?.data || error.message 
+        res.status(500).json({
+            error: "Erreur serveur",
+            details: error.response?.data || error.message
         });
     }
 });
