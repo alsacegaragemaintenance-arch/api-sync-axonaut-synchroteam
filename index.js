@@ -9,7 +9,7 @@ app.use(express.json());
 // 🔹 Variables d'environnement
 const PORT = process.env.PORT || 3000;
 const WEBHOOK_TOKEN = process.env.WEBHOOK_TOKEN;
-const SYNCHROTEAM_API_KEY = process.env.SYNCHROTEAM_API_KEY;
+const SYNCHROTEAM_API_KEY = process.env.ST_API_KEY;
 const SYNCHROTEAM_URL = process.env.SYNCHROTEAM_URL;
 
 // 🔹 Endpoint racine (test navigateur)
@@ -34,7 +34,7 @@ app.post('/axonaut/client', async (req, res) => {
         // 🔹 Préparer les données à envoyer à Synchroteam
         const synchroData = {
             name: clientData.name,
-            phone: clientData.number, // vérifie le champ exact attendu par Synchroteam
+            phone: clientData.number,
             email: clientData.email
         };
 
