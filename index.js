@@ -1,3 +1,4 @@
+// index.js
 require('dotenv').config();
 const express = require('express');
 const axios = require('axios');
@@ -10,6 +11,7 @@ const PORT = process.env.PORT || 3000;
 const WEBHOOK_TOKEN = process.env.WEBHOOK_TOKEN;
 const SYNCHROTEAM_API_KEY = process.env.ST_API_KEY;
 const SYNCHROTEAM_URL = process.env.SYNCHROTEAM_URL; // ex: https://api.synchroteam.com/v2
+const ST_TECH_ID = process.env.ST_TECH_ID;
 
 // 🔹 Endpoint racine (test navigateur)
 app.get('/', (req, res) => {
@@ -36,15 +38,16 @@ app.post('/axonaut/client', async (req, res) => {
         // 🔹 Préparer les données à envoyer à Synchroteam
         const synchroData = {
             name: clientData.name,
-            phone: clientData.number, // Synchroteam attend 'phone'
-            email: clientData.email
+            phone: clientData.number,
+            email: clientData.email,
+            tech_id: ST_TECH_ID
         };
 
         // 🔹 Vérifier si le client existe déjà via email
-        const searchUrl = `${SYNCHROTEAM_URL}/clients?email=${encodeURIComponent(synchroData.email)}`;
+        const searchUrl = `${SYNCHROTEAM_URL}/client?email=${encodeURIComponent(synchroData.email)}`;
         const searchResponse = await axios.get(searchUrl, {
             headers: {
-                'X-API-KEY': SYNCHROTEAM_API_KEY,
+                'Authorization': `Bearer ${SYNCHROTEAM_API_KEY}`,
                 'Content-Type': 'application/json',
                 'Accept': 'application/json'
             }
@@ -53,9 +56,12 @@ app.post('/axonaut/client', async (req, res) => {
         if (searchResponse.data && searchResponse.data.length > 0) {
             // Client existe → mise à jour
             const clientId = searchResponse.data[0].id;
-            await axios.put(`${SYNCHROTEAM_URL}/clients/${clientId}`, synchroData, {
+            await axios.post(`${SYNCHROTEAM_URL}/client/update`, {
+                ...synchroData,
+                id: clientId
+            }, {
                 headers: {
-                    'X-API-KEY': SYNCHROTEAM_API_KEY,
+                    'Authorization': `Bearer ${SYNCHROTEAM_API_KEY}`,
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 }
@@ -63,9 +69,9 @@ app.post('/axonaut/client', async (req, res) => {
             console.log(`✏️ Client existant mis à jour dans Synchroteam : ${clientId}`);
         } else {
             // Client n'existe pas → création
-            const createResponse = await axios.post(`${SYNCHROTEAM_URL}/clients`, synchroData, {
+            const createResponse = await axios.post(`${SYNCHROTEAM_URL}/client/create`, synchroData, {
                 headers: {
-                    'X-API-KEY': SYNCHROTEAM_API_KEY,
+                    'Authorization': `Bearer ${SYNCHROTEAM_API_KEY}`,
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 }
@@ -81,7 +87,6 @@ app.post('/axonaut/client', async (req, res) => {
             console.error("Status:", error.response.status);
             console.error("Data:", error.response.data);
         }
-
         res.status(500).json({ 
             error: "Erreur serveur", 
             details: error.response?.data || error.message 
