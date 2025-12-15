@@ -25,8 +25,11 @@ app.get('/health', (req, res) => {
 // 🔹 Webhook Axonaut (création / modification client)
 app.post('/axonaut/client', async (req, res) => {
     try {
+        // 🔹 Vérification token
         const token = req.headers['authorization']?.split(' ')[1];
-        if (token !== WEBHOOK_TOKEN) return res.status(401).json({ error: "Token invalide" });
+        if (token !== WEBHOOK_TOKEN) {
+            return res.status(401).json({ error: "Token invalide" });
+        }
 
         const clientData = req.body;
         console.log("📥 Client reçu d'Axonaut :", clientData);
@@ -34,27 +37,39 @@ app.post('/axonaut/client', async (req, res) => {
         // 🔹 Préparer les données à envoyer à Synchroteam
         const synchroData = {
             name: clientData.name,
-            phone: clientData.number,
+            phone: clientData.number, // Vérifie si Synchroteam attend 'phone' ou 'mobile'
             email: clientData.email
         };
 
-        // 🔹 Vérifier si le client existe déjà dans Synchroteam
-        const searchUrl = `${SYNCHROTEAM_URL}/clients?email=${encodeURIComponent(synchroData.email)}`;
+        // 🔹 Vérifier si le client existe déjà
+        const searchUrl = `${SYNCHROTEAM_URL}/v3/clients?email=${encodeURIComponent(synchroData.email)}`;
         const searchResponse = await axios.get(searchUrl, {
-            headers: { 'X-API-KEY': SYNCHROTEAM_API_KEY }
+            headers: {
+                'X-API-KEY': SYNCHROTEAM_API_KEY,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
         });
 
         if (searchResponse.data && searchResponse.data.length > 0) {
             // Client existe → mise à jour
             const clientId = searchResponse.data[0].id;
-            await axios.put(`${SYNCHROTEAM_URL}/clients/${clientId}`, synchroData, {
-                headers: { 'X-API-KEY': SYNCHROTEAM_API_KEY }
+            await axios.put(`${SYNCHROTEAM_URL}/v3/clients/${clientId}`, synchroData, {
+                headers: {
+                    'X-API-KEY': SYNCHROTEAM_API_KEY,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                }
             });
             console.log(`✏️ Client existant mis à jour dans Synchroteam : ${clientId}`);
         } else {
             // Client n'existe pas → création
-            const createResponse = await axios.post(`${SYNCHROTEAM_URL}/clients`, synchroData, {
-                headers: { 'X-API-KEY': SYNCHROTEAM_API_KEY }
+            const createResponse = await axios.post(`${SYNCHROTEAM_URL}/v3/clients`, synchroData, {
+                headers: {
+                    'X-API-KEY': SYNCHROTEAM_API_KEY,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                }
             });
             console.log(`✅ Nouveau client créé dans Synchroteam : ${createResponse.data.id}`);
         }
